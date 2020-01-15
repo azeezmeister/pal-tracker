@@ -4,7 +4,6 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,8 +13,7 @@ import java.util.List;
 @RequestMapping("/time-entries")
 public class TimeEntryController {
 
-    private TimeEntryRepository timeEntryRepository;
-
+    private TimeEntryRepository timeEntriesRepo;
     private final DistributionSummary timeEntrySummary;
     private final Counter actionCounter;
 
@@ -23,55 +21,55 @@ public class TimeEntryController {
             TimeEntryRepository timeEntriesRepo,
             MeterRegistry meterRegistry
     ) {
-        this.timeEntryRepository = timeEntriesRepo;
+        this.timeEntriesRepo = timeEntriesRepo;
 
         timeEntrySummary = meterRegistry.summary("timeEntry.summary");
         actionCounter = meterRegistry.counter("timeEntry.actionCounter");
     }
 
-    @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping
     public ResponseEntity<TimeEntry> create(@RequestBody TimeEntry timeEntry) {
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(timeEntryRepository.create(timeEntry));
+        TimeEntry createdTimeEntry = timeEntriesRepo.create(timeEntry);
+        actionCounter.increment();
+        timeEntrySummary.record(timeEntriesRepo.list().size());
 
-//        TimeEntry result = timeEntryRepository.create(timeEntry);
-//        return new ResponseEntity<>(result, HttpStatus.CREATED);
+        return new ResponseEntity<>(createdTimeEntry, HttpStatus.CREATED);
     }
 
-    @PutMapping(path="/{id}", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<TimeEntry> update(@PathVariable Long id, @RequestBody TimeEntry timeEntry) {
-        TimeEntry result = timeEntryRepository.update(id, timeEntry);
-        if (result != null) {
-            return ResponseEntity.ok(result);
-
-        } else {
-            return ResponseEntity.notFound().build();
-//            return new ResponseEntity<>(result, HttpStatus.NOT_FOUND);
-        }
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity delete(@PathVariable Long id) {
-        timeEntryRepository.delete(id);
-        return ResponseEntity.noContent().build();
-//        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-    }
-
-    @GetMapping("/{id}")
+    @GetMapping("{id}")
     public ResponseEntity<TimeEntry> read(@PathVariable Long id) {
-        TimeEntry result = timeEntryRepository.find(id);
-        if (result != null) {
-            return new ResponseEntity<>(result, HttpStatus.OK);
+        TimeEntry timeEntry = timeEntriesRepo.find(id);
+        if (timeEntry != null) {
+            actionCounter.increment();
+            return new ResponseEntity<>(timeEntry, HttpStatus.OK);
         } else {
-            return new ResponseEntity<>(result, HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
 
     @GetMapping
     public ResponseEntity<List<TimeEntry>> list() {
-        List<TimeEntry> result = timeEntryRepository.list();
-        return new ResponseEntity<>(result, HttpStatus.OK);
+        actionCounter.increment();
+        return new ResponseEntity<>(timeEntriesRepo.list(), HttpStatus.OK);
     }
 
+    @PutMapping("{id}")
+    public ResponseEntity<TimeEntry> update(@PathVariable Long id, @RequestBody TimeEntry timeEntry) {
+        TimeEntry updatedTimeEntry = timeEntriesRepo.update(id, timeEntry);
+        if (updatedTimeEntry != null) {
+            actionCounter.increment();
+            return new ResponseEntity<>(updatedTimeEntry, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
+    @DeleteMapping("{id}")
+    public ResponseEntity delete(@PathVariable Long id) {
+        timeEntriesRepo.delete(id);
+        actionCounter.increment();
+        timeEntrySummary.record(timeEntriesRepo.list().size());
+
+        return new ResponseEntity(HttpStatus.NO_CONTENT);
+    }
 }
