@@ -19,24 +19,31 @@ public class TimeEntryController {
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<TimeEntry> create(@RequestBody TimeEntry timeEntry) {
-        TimeEntry result = timeEntryRepository.create(timeEntry);
-        return new ResponseEntity<>(result, HttpStatus.CREATED);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(timeEntryRepository.create(timeEntry));
+
+//        TimeEntry result = timeEntryRepository.create(timeEntry);
+//        return new ResponseEntity<>(result, HttpStatus.CREATED);
     }
 
     @PutMapping(path="/{id}", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<TimeEntry> update(@PathVariable Long id, @RequestBody TimeEntry timeEntry) {
         TimeEntry result = timeEntryRepository.update(id, timeEntry);
         if (result != null) {
-            return new ResponseEntity<>(result, HttpStatus.OK);
+            return ResponseEntity.ok(result);
+
         } else {
-            return new ResponseEntity<>(result, HttpStatus.NOT_FOUND);
+            return ResponseEntity.notFound().build();
+//            return new ResponseEntity<>(result, HttpStatus.NOT_FOUND);
         }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity delete(@PathVariable Long id) {
         timeEntryRepository.delete(id);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        return ResponseEntity.noContent().build();
+//        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     @GetMapping("/{id}")
